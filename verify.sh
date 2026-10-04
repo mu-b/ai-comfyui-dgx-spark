@@ -84,8 +84,15 @@ if [ -f "$AIMDO_SO" ]; then
 import torch; torch.cuda.init(); _=torch.zeros(1, device='cuda')
 import comfy_aimdo.control as c, ctypes
 c.init()
-c.lib.init.argtypes=[ctypes.c_int]; c.lib.init.restype=ctypes.c_bool
-print('OK' if c.lib.init(0) else 'FAIL')
+# Newer comfy-aimdo (>=0.4.10) changed the native init() signature to
+# (int*, uint64*, size_t), so use the public wrapper — poking lib.init(0)
+# directly passes a NULL device array and always fails.
+if hasattr(c, 'init_device'):
+    ok = c.init_device(0)
+else:
+    c.lib.init.argtypes=[ctypes.c_int]; c.lib.init.restype=ctypes.c_bool
+    ok = c.lib.init(0)
+print('OK' if ok else 'FAIL')
 " 2>&1 | grep -v FutureWarning | grep -v pynvml | grep -v aimdo: | tail -1)
         if [ "$AIMDO_INIT" = "OK" ]; then
             ok "aimdo init(0) returns True"

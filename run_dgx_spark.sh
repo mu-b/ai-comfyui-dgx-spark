@@ -27,6 +27,7 @@ export PYTORCH_NO_CUDA_MEMORY_CACHING="${PYTORCH_NO_CUDA_MEMORY_CACHING:-1}"
 FLAGS=(
   --listen 0.0.0.0           # Bind for remote access (set to 127.0.0.1 if local-only).
   --port 8188
+  --enable-manager
 
   --reserve-vram 8           # Headroom for activations on the unified pool.
                              # ComfyUI's auto-reserve is a smaller default; bumping

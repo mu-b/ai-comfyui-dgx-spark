@@ -5,13 +5,15 @@
 # Each step is idempotent — safe to re-run after any change or git pull.
 #
 # What this does, in order:
-#   1. build/imageio-ffmpeg.sh — pip install (VideoHelperSuite dep)
-#   2. build/opencv.sh         — fix opencv 3-way conflict
-#   3. build/onnxruntime.sh    — install community sm_121 wheel
-#   4. build/sage.sh           — verify SageAttention has sm_121 native, rebuild if not
-#   5. build/aimdo.sh          — install comfy-aimdo ≥ v0.3.0 (PyPI aarch64 wheel)
-#   6. dgx_spark_patches.sh    — apply ComfyUI source patches (idempotent, version-aware)
-#   7. install run_dgx_spark.sh — copy launcher template into ComfyUI dir if missing
+#   1. pip install -r requirements.txt          — ComfyUI core deps (from $COMFY)
+#   2. pip install -r manager_requirements.txt  — ComfyUI-Manager deps (from $COMFY, if present)
+#   3. build/imageio-ffmpeg.sh — pip install (VideoHelperSuite dep)
+#   4. build/opencv.sh         — fix opencv 3-way conflict
+#   5. build/onnxruntime.sh    — install community sm_121 wheel
+#   6. build/sage.sh           — verify SageAttention has sm_121 native, rebuild if not
+#   7. build/aimdo.sh          — install comfy-aimdo ≥ v0.3.0 (PyPI aarch64 wheel)
+#   8. dgx_spark_patches.sh    — apply ComfyUI source patches (idempotent, version-aware)
+#   9. install run_dgx_spark.sh — copy launcher template into ComfyUI dir if missing
 #
 # What this does NOT do:
 #   - Install ComfyUI itself (assumes you have it at $COMFY)
@@ -134,37 +136,57 @@ fi
 
 echo ""
 echo "================================================================"
-echo " Step 1/7 — imageio-ffmpeg"
+echo " Step 1/9 — ComfyUI requirements.txt"
+echo "================================================================"
+if [ ! -f "$COMFY/requirements.txt" ]; then
+    echo "[install] ERROR: $COMFY/requirements.txt not found" >&2
+    exit 1
+fi
+"$VENV/bin/pip" install -r "$COMFY/requirements.txt" 2>&1 | tail -5
+
+echo ""
+echo "================================================================"
+echo " Step 2/9 — ComfyUI-Manager manager_requirements.txt"
+echo "================================================================"
+if [ -f "$COMFY/manager_requirements.txt" ]; then
+    "$VENV/bin/pip" install -r "$COMFY/manager_requirements.txt" 2>&1 | tail -5
+else
+    echo "[install] $COMFY/manager_requirements.txt not found — skipping"
+fi
+
+echo ""
+echo "================================================================"
+echo " Step 3/9 — imageio-ffmpeg"
 echo "================================================================"
 bash "$REPO_DIR/build/imageio-ffmpeg.sh"
 
 echo ""
 echo "================================================================"
-echo " Step 2/7 — opencv 3-way conflict cleanup"
+echo " Step 4/9 — opencv 3-way conflict cleanup"
 echo "================================================================"
 bash "$REPO_DIR/build/opencv.sh"
 
 echo ""
 echo "================================================================"
-echo " Step 3/7 — ONNX Runtime sm_121 community wheel"
+echo " Step 5/9 — ONNX Runtime sm_121 community wheel"
 echo "================================================================"
 bash "$REPO_DIR/build/onnxruntime.sh"
 
 echo ""
 echo "================================================================"
-echo " Step 4/7 — SageAttention sm_121 native kernels"
+echo " Step 6/9 — SageAttention sm_121 native kernels"
 echo "================================================================"
 bash "$REPO_DIR/build/sage.sh"
 
 echo ""
 echo "================================================================"
-echo " Step 5/7 — comfy-aimdo install (PyPI aarch64 wheel, DynamicVRAM)"
+echo " Step 7/9 — comfy-aimdo install (PyPI aarch64 wheel, DynamicVRAM)"
 echo "================================================================"
 bash "$REPO_DIR/build/aimdo.sh"
 
 echo ""
 echo "================================================================"
-echo " Step 6/7 — apply ComfyUI source patches"
+echo " Step 8/9 — apply ComfyUI source patches"
 echo "================================================================"
 # Patch script wants to run from ComfyUI dir
 PATCHFILE="$COMFY/dgx_spark_patches.sh"
@@ -177,7 +199,7 @@ fi
 
 echo ""
 echo "================================================================"
-echo " Step 7/7 — launcher template"
+echo " Step 9/9 — launcher template"
 echo "================================================================"
 LAUNCHER="$COMFY/run_dgx_spark.sh"
 if [ -f "$LAUNCHER" ]; then
